@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Media Search - Openverse Media</title>
+    <style>
+        /* Same CSS styles as before, updated below */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        .search-container {
+            margin: 20px;
+            text-align: center;
+        }
+
+        .search-container input[type="text"] {
+            padding: 10px;
+            width: 80%;
+            max-width: 500px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .search-container button {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .search-container button:hover {
+            background-color: #555;
+        }
+
+        .media-type-selection {
+            margin-bottom: 20px;
+        }
+
+        .media-type-selection label {
+            margin-right: 20px;
+            font-size: 16px;
+        }
+
+        .media-results {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .main-image {
+            width: 80%;
+            max-width: 800px;
+            height: auto;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .additional-images {
+            display: flex;
+            overflow-x: auto;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            width: 80%;
+            max-width: 800px;
+            justify-content: flex-start;
+        }
+
+        .additional-images img {
+            height: 100px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .load-more {
+            display: none;
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+
+        .load-more.show {
+            display: block;
+            transform: translateX(0);
+        }
+
+        .load-more:hover {
+            background-color: #555;
+        }
+
+        footer {
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 10px 0;
+            position: fixed;
+            width: 100%;
+            bottom: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="index.html" class="logo" style="color: white; text-decoration: none; font-size: 24px;">Openverse Media</a>
+            <div class="search-container">
+                <div class="media-type-selection">
+                    <label>
+                        <input type="radio" name="mediaType" value="images" checked> Images
+                    </label>
+                    <label>
+                        <input type="radio" name="mediaType" value="videos"> Videos
+                    </label>
+                    <label>
+                        <input type="radio" name="mediaType" value="audio"> Audio
+                    </label>
+                </div>
+                <input type="text" id="search-input" placeholder="Search for media...">
+                <button id="search-btn">Search</button>
+            </div>
+        </header>
+        <main class="media-results">
+            <img src="" id="mainImage" class="main-image" alt="Main Image">
+            <div class="additional-images" id="results-container">
+                <!-- Media results will be displayed here -->
+            </div>
+        </main>
+        <button class="load-more" id="loadMoreBtn" style="display: none;">Load More</button>
+        <footer>
+            <p>&copy; 2025 Openverse Media. All Rights Reserved.</p>
+        </footer>
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                document.getElementById('search-btn').addEventListener('click', searchMedia);
+                document.getElementById('loadMoreBtn').addEventListener('click', loadMoreImages);
+            });
+    
+            let currentPage = 1;
+            let currentQuery = "";
+            let currentMediaType = "images";
+    
+            function searchMedia() {
+                const queryInput = document.getElementById('search-input');
+                const mediaTypeInput = document.querySelector('input[name="mediaType"]:checked');
+                
+                if (!queryInput || !mediaTypeInput) {
+                    console.error("Search input or media type selection not found.");
+                    return;
+                }
+                
+                const query = queryInput.value;
+                const mediaType = mediaTypeInput.value;
+                
+                if (query.trim() !== "") {
+                    currentPage = 1;
+                    fetchMedia(query, mediaType, currentPage);
+                }
+            }
+    
+            async function fetchMedia(query, mediaType, page = 1) {
+                currentQuery = query;
+                currentMediaType = mediaType;
+                
+                // Using CORS proxy
+                const proxyUrl = "https://cors-anywhere.herokuapp.com/"; // You can use a different proxy if necessary
+                const apiUrl = `https://api.openverse.engineering/v1/${mediaType}/?q=${encodeURIComponent(query)}&page=${page}`;
+                const fullUrl = proxyUrl + apiUrl;
+            
+                try {
+                    const response = await fetch(fullUrl, {
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest", // Some proxies require this header
+                        }
+                    });
+            
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch media');
+                    }
+            
+                    const data = await response.json();
+                    displayResults(data.results, page);
+                } catch (error) {
+                    console.error('Error fetching media:', error);
+                    document.getElementById('results-container').innerHTML = '<p>Failed to load results. Please try again.</p>';
+                }
+            }
+            
+            function displayResults(results, page) {
+                const container = document.getElementById('results-container');
+                if (!container) {
+                    console.error("Results container not found.");
+                    return;
+                }
+                
+                if (page === 1) container.innerHTML = '';
+                if (results.length === 0 && page === 1) {
+                    container.innerHTML = '<p>No results found.</p>';
+                    return;
+                }
+                if (results.length > 0 && page === 1) {
+                    document.getElementById('mainImage').src = results[0].url;
+                }
+                results.forEach((media, index) => {
+                    if (page === 1 && index === 0) return;
+                    const mediaElement = document.createElement('img');
+                    mediaElement.src = media.url;
+                    mediaElement.alt = media.title;
+                    mediaElement.loading = "lazy";
+                    mediaElement.onclick = () => document.getElementById('mainImage').src = media.url;
+                    container.appendChild(mediaElement);
+                });
+                document.getElementById('loadMoreBtn').style.display = 'block';
+            }
+    
+            function loadMoreImages() {
+                currentPage++;
+                fetchMedia(currentQuery, currentMediaType, currentPage);
+            }
+        </script>
+</body>
+</html>
